@@ -1,6 +1,4 @@
-import { VercelRequest, VercelResponse } from '@vercel/node';
-
-export default async function handler(req: VercelRequest, res: VercelResponse) {
+export default async function handler(req, res) {
   // POST 요청이 아니면 차단 (보안)
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method Not Allowed' });
 
