@@ -4,7 +4,7 @@ export default async function handler(req: any, res: any) {
   const { message } = req.body;
 
   try {
-    // 1. Tavily 검색
+    // 1. Tavily 검색 (최신 데이터 수집)
     const searchResponse = await fetch('https://api.tavily.com/search', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -19,42 +19,46 @@ export default async function handler(req: any, res: any) {
 
     const searchData = await searchResponse.json();
     
-    // Tavily 에러 체크
-    if (searchData.error) {
-      console.error("Tavily API 에러:", searchData.error);
-    }
+    // 검색 결과 정리 및 출처(URL) 포함
+    const results = searchData.results || [];
+    const context = results.length > 0 
+      ? results.map((r: any) => `[출처: ${r.title}](${r.url})\n내용: ${r.content}`).join("\n\n")
+      : "제공된 실시간 데이터 없음";
 
-    const context = searchData.results?.map((r: any) => `제목: ${r.title}\n내용: ${r.content}`).join("\n\n") || "검색 결과가 없습니다.";
-
-    // 2. Gemini 호출
+    // 2. Gemini 호출 (엄격한 페르소나 부여)
     const geminiResponse = await fetch(
-  `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${process.env.VITE_GEMINI_API_KEY}`,
-  {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({
-      contents: [{
-        parts: [{
-          text: `당신은 실리콘밸리 기술 전략가입니다. 아래 데이터를 참고해 답변하세요.\n\n[데이터]:\n${context}\n\n질문: ${message}`
-        }]
-      }]
-    })
-  }
-);
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${process.env.VITE_GEMINI_API_KEY}`,
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          contents: [{
+            parts: [{
+              text: `당신은 실리콘밸리 기술 전략가입니다. 반드시 아래 규칙을 지키세요:
+              
+              1. **지어내지 마세요(No Hallucination)**: [실시간 데이터]에 관련 정보가 없다면 "현재 실시간 데이터를 통해 확인된 정보가 없습니다"라고 정직하게 답하고, 일반적인 지식으로 때우지 마세요.
+              2. **출처 명시**: 답변 끝에 반드시 참고한 사이트의 제목과 링크를 리스트 형태로 포함하세요.
+              3. **추론 과정**: 답변 중간에 "데이터를 통해 분석한 결과, ~라는 이유로 이렇게 판단됩니다"라는 논리적 도출 과정을 짧게 언급하세요.
+              
+              [실시간 데이터]:
+              ${context}
+              
+              사용자 질문: ${message}`
+            }]
+          }]
+        })
+      }
+    );
 
     const aiData = await geminiResponse.json();
 
-    // 🚨 [핵심 수정] Gemini가 에러를 보냈을 때 로그에 상세 사유 출력
     if (aiData.error) {
-      console.error("Gemini API 상세 에러:", JSON.stringify(aiData.error, null, 2));
-      return res.status(500).json({ error: `Gemini 에러: ${aiData.error.message}` });
+      console.error("Gemini 상세 에러:", JSON.stringify(aiData.error, null, 2));
+      return res.status(500).json({ error: `Gemini API 에러: ${aiData.error.message}` });
     }
 
     if (!aiData.candidates || aiData.candidates.length === 0) {
-      console.error("Gemini 응답 구조 이상:", JSON.stringify(aiData, null, 2));
-      throw new Error("Gemini 응답 후보(candidates)가 없습니다.");
+      throw new Error("AI 응답 생성 실패");
     }
 
     const answer = aiData.candidates[0].content.parts[0].text;
@@ -62,6 +66,6 @@ export default async function handler(req: any, res: any) {
 
   } catch (error: any) {
     console.error("RAG 에러 발생:", error.message);
-    res.status(500).json({ error: error.message || '서버 에러 발생' });
+    res.status(500).json({ error: '서버 에러가 발생했습니다.' });
   }
 }
