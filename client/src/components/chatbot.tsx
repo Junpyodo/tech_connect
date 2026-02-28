@@ -1,9 +1,9 @@
 import { useState, useRef, useEffect } from "react";
-import { MessageSquare, X, Send, Bot, User, Sparkles } from "lucide-react";
+import { MessageSquare, X, Send, Bot, User, Sparkles, Loader2 } from "lucide-react";
 import { Button } from "./ui/button";
 import { Input } from "./ui/input";
 import { ScrollArea } from "./ui/scroll-area";
-import { Avatar, AvatarFallback, AvatarImage } from "./ui/avatar";
+import { Avatar, AvatarFallback } from "./ui/avatar";
 
 interface Message {
   id: string;
@@ -17,41 +17,64 @@ export default function Chatbot() {
     {
       id: "1",
       role: "assistant",
-      content: "Hello! I'm your DevMatch AI assistant. Ask me about job matches for your tech stack or the latest tech news!",
+      content: "안녕하세요! 실리콘밸리 기술 전략가 DevMatch AI입니다. 궁금하신 기술 트렌드나 채용 정보를 물어보세요.",
     }
   ]);
   const [input, setInput] = useState("");
+  const [isLoading, setIsLoading] = useState(false); // AI 응답 대기 상태
   const scrollRef = useRef<HTMLDivElement>(null);
 
+  // 메시지가 추가될 때마다 자동으로 하단 스크롤
   useEffect(() => {
     if (scrollRef.current) {
-      scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
+      const scrollContainer = scrollRef.current.querySelector('[data-radix-scroll-area-viewport]');
+      if (scrollContainer) {
+        scrollContainer.scrollTop = scrollContainer.scrollHeight;
+      }
     }
-  }, [messages, isOpen]);
+  }, [messages, isOpen, isLoading]);
 
-  const handleSend = () => {
-    if (!input.trim()) return;
+  const handleSend = async () => {
+    if (!input.trim() || isLoading) return;
 
     const userMsg: Message = { id: Date.now().toString(), role: "user", content: input };
     setMessages((prev) => [...prev, userMsg]);
+    const currentInput = input;
     setInput("");
+    setIsLoading(true);
 
-    // Mock AI response
-    setTimeout(() => {
-      let aiResponse = "I'm currently in mockup mode, but soon I'll connect to Gemini API to give you real answers!";
+    try {
+      // 우리가 만든 Vercel Serverless Function 호출
+      const response = await fetch('/api/chat', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ message: currentInput }),
+      });
+
+      if (!response.ok) throw new Error("API 연동 에러");
+
+      const data = await response.json();
+
+      const aiMsg: Message = { 
+        id: (Date.now() + 1).toString(), 
+        role: "assistant", 
+        content: data.answer 
+      };
       
-      const lowerInput = userMsg.content.toLowerCase();
-      if (lowerInput.includes("job") || lowerInput.includes("match")) {
-        aiResponse = "Based on your profile (React, Node.js), I found 3 new jobs that might fit. Want me to list them?";
-      } else if (lowerInput.includes("news") || lowerInput.includes("react")) {
-        aiResponse = "Did you hear? React 19 RC is out with a new compiler! You can check the feed for more details.";
-      }
-
+      setMessages((prev) => [...prev, aiMsg]);
+    } catch (error) {
+      console.error("AI Response Error:", error);
       setMessages((prev) => [
-        ...prev,
-        { id: (Date.now() + 1).toString(), role: "assistant", content: aiResponse }
+        ...prev, 
+        { 
+          id: Date.now().toString(), 
+          role: "assistant", 
+          content: "죄송합니다. 실시간 데이터를 분석하는 중에 문제가 발생했습니다. Vercel의 환경 변수(API Key) 설정을 확인해주세요." 
+        }
       ]);
-    }, 1000);
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (
@@ -60,7 +83,6 @@ export default function Chatbot() {
         <Button
           onClick={() => setIsOpen(true)}
           className="fixed bottom-6 right-6 h-14 w-14 rounded-full shadow-lg shadow-primary/20 bg-primary hover:bg-primary/90 text-primary-foreground transition-transform hover:scale-105 z-50"
-          data-testid="button-open-chat"
         >
           <MessageSquare className="h-6 w-6" />
         </Button>
@@ -77,7 +99,7 @@ export default function Chatbot() {
               <div>
                 <h3 className="font-semibold text-sm">DevMatch AI</h3>
                 <p className="text-xs text-muted-foreground flex items-center gap-1">
-                  <Sparkles className="w-3 h-3 text-primary" /> Gemini Powered
+                  <Sparkles className="w-3 h-3 text-primary" /> Live Search RAG
                 </p>
               </div>
             </div>
@@ -86,7 +108,7 @@ export default function Chatbot() {
             </Button>
           </div>
 
-          {/* Messages */}
+          {/* Messages Area */}
           <ScrollArea className="flex-1 h-80 p-4" ref={scrollRef}>
             <div className="space-y-4">
               {messages.map((msg) => (
@@ -100,7 +122,7 @@ export default function Chatbot() {
                     </Avatar>
                   )}
                   <div
-                    className={`p-3 rounded-2xl max-w-[80%] text-sm ${
+                    className={`p-3 rounded-2xl max-w-[85%] text-sm whitespace-pre-wrap ${
                       msg.role === "user"
                         ? "bg-primary text-primary-foreground rounded-tr-none"
                         : "bg-secondary text-secondary-foreground rounded-tl-none border border-border/50"
@@ -110,15 +132,27 @@ export default function Chatbot() {
                   </div>
                   {msg.role === "user" && (
                     <Avatar className="w-8 h-8 border border-border mt-1 shrink-0">
-                      <AvatarFallback className="bg-secondary"><User className="w-4 h-4"/></AvatarFallback>
+                      <AvatarFallback className="bg-secondary text-secondary-foreground"><User className="w-4 h-4"/></AvatarFallback>
                     </Avatar>
                   )}
                 </div>
               ))}
+              {isLoading && (
+                <div className="flex justify-start gap-3">
+                  <Avatar className="w-8 h-8 border border-border mt-1 shrink-0">
+                    <AvatarFallback className="bg-primary/10 text-primary">
+                      <Loader2 className="w-4 h-4 animate-spin"/>
+                    </AvatarFallback>
+                  </Avatar>
+                  <div className="bg-secondary p-3 rounded-2xl rounded-tl-none text-xs text-muted-foreground italic">
+                    실시간 데이터를 분석 중입니다...
+                  </div>
+                </div>
+              )}
             </div>
           </ScrollArea>
 
-          {/* Input */}
+          {/* Input Area */}
           <div className="p-4 border-t border-border bg-card">
             <form
               onSubmit={(e) => {
@@ -130,12 +164,12 @@ export default function Chatbot() {
               <Input
                 value={input}
                 onChange={(e) => setInput(e.target.value)}
-                placeholder="Ask about jobs or tech..."
+                placeholder={isLoading ? "AI가 생각 중입니다..." : "Ask about tech jobs..."}
+                disabled={isLoading}
                 className="flex-1 bg-secondary/50 border-border focus-visible:ring-primary"
-                data-testid="input-chat"
               />
-              <Button type="submit" size="icon" disabled={!input.trim()} className="bg-primary hover:bg-primary/90">
-                <Send className="h-4 w-4" />
+              <Button type="submit" size="icon" disabled={!input.trim() || isLoading} className="bg-primary hover:bg-primary/90">
+                {isLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
               </Button>
             </form>
           </div>
