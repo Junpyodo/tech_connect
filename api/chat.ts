@@ -27,7 +27,7 @@ export default async function handler(req: any, res: any) {
     const context = searchData.results?.map((r: any) => `제목: ${r.title}\n내용: ${r.content}`).join("\n\n") || "검색 결과가 없습니다.";
 
     // 2. Gemini 호출
-    const geminiResponse = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${process.env.VITE_GEMINI_API_KEY}`, {
+    const geminiResponse = await fetch(`https://generativelanguage.googleapis.com/v1/models/gemini-1.5-flash:generateContent?key=${process.env.VITE_GEMINI_API_KEY}`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
