@@ -1,4 +1,4 @@
-export default async function handler(req, res) {
+export default async function handler(req: any, res: any) {
   // POST 요청이 아니면 차단 (보안)
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method Not Allowed' });
 
