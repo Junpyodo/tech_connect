@@ -40,7 +40,7 @@ export default async function handler(req: any, res: any) {
             Your goal is to provide expert analysis based ONLY on the provided [Real-time Data].
             
             Strict Rules:
-            1. Language: Always respond in English.
+            1. Language:Your basic language is English.
             2. Evidence-Based: If the information is not in the data, state that you don't know. Do not hallucinate.
             3. Reasoning: Explain your logical process ("Based on the surge in X, I conclude Y...").
             4. Citations: List the source titles and URLs at the end of your response.`
