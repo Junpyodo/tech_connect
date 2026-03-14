@@ -1,12 +1,10 @@
-// api/chat.ts 수정본
-
 export default async function handler(req: any, res: any) {
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method Not Allowed' });
 
   const { message } = req.body;
 
   try {
-    // 1. Tavily 검색 (이 부분은 이전과 동일)
+    // 1. Search Latest News via Tavily
     const searchResponse = await fetch('https://api.tavily.com/search', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -14,47 +12,60 @@ export default async function handler(req: any, res: any) {
         api_key: process.env.TAVILY_API_KEY,
         query: message,
         search_depth: "advanced",
-        include_domains: ["github.com", "news.ycombinator.com", "crunchbase.com", "techcrunch.com", "adzuna.com"],
         max_results: 5
       })
     });
 
     const searchData = await searchResponse.json();
     const results = searchData.results || [];
+    
+    // Formatting context with Source URLs
     const context = results.length > 0 
-      ? results.map((r: any) => `[출처: ${r.title}](${r.url})\n내용: ${r.content}`).join("\n\n")
-      : "제공된 실시간 데이터 없음";
+      ? results.map((r: any) => `Source: ${r.title}\nURL: ${r.url}\nContent: ${r.content}`).join("\n\n")
+      : "No real-time data found.";
 
-    // 2. Gemini 호출 (공식 문서 v1 규격 적용)
-    // 주소 형식: https://generativelanguage.googleapis.com/v1/models/gemini-1.5-flash:generateContent?key=YOUR_API_KEY
-    const geminiResponse = await fetch(
-      `https://generativelanguage.googleapis.com/v1/models/gemini-1.5-flash:generateContent?key=${process.env.VITE_GEMINI_API_KEY}`,
-      {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          contents: [{
-            parts: [{
-              text: `당신은 실리콘밸리 기술 전략가입니다. 아래 데이터를 참고해 답변하세요.\n\n[데이터]:\n${context}\n\n질문: ${message}\n\n반드시 데이터에 기반하여 답변하고, 출처 링크를 포함하세요.`
-            }]
-          }]
-        })
-      }
-    );
+    // 2. Call Groq API (Using Llama 3 for high speed and reliability)
+    const groqResponse = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${process.env.GROQ_API_KEY}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        model: "llama-3.3-70b-versatile", // High-performance model
+        messages: [
+          {
+            role: "system",
+            content: `You are a Silicon Valley Tech Strategist. 
+            Your goal is to provide expert analysis based ONLY on the provided [Real-time Data].
+            
+            Strict Rules:
+            1. Language: Always respond in English.
+            2. Evidence-Based: If the information is not in the data, state that you don't know. Do not hallucinate.
+            3. Reasoning: Explain your logical process ("Based on the surge in X, I conclude Y...").
+            4. Citations: List the source titles and URLs at the end of your response.`
+          },
+          {
+            role: "user",
+            content: `[Real-time Data]:\n${context}\n\nUser Question: ${message}`
+          }
+        ],
+        temperature: 0.5
+      })
+    });
 
-    const aiData = await geminiResponse.json();
+    const aiData = await groqResponse.json();
 
-    // 에러 발생 시 로그 출력
     if (aiData.error) {
-      console.error("Gemini 상세 에러:", JSON.stringify(aiData.error, null, 2));
+      console.error("Groq API Error:", aiData.error);
       return res.status(500).json({ error: aiData.error.message });
     }
 
-    const answer = aiData.candidates?.[0]?.content?.parts?.[0]?.text || "답변을 생성할 수 없습니다.";
+    const answer = aiData.choices[0].message.content;
     res.status(200).json({ answer });
 
   } catch (error: any) {
-    console.error("RAG 에러 발생:", error.message);
-    res.status(500).json({ error: '서버 에러 발생' });
+    console.error("System Error:", error.message);
+    res.status(500).json({ error: "Internal Server Error" });
   }
 }
