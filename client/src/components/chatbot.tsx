@@ -137,7 +137,7 @@ export default function Chatbot() {
                     DevMatch Strategist
                   </h2>
                   <span className="hidden sm:flex px-2 py-0.5 rounded-full bg-secondary text-xs text-muted-foreground items-center gap-1 font-mono">
-                    <Sparkles className="w-3 h-3 text-primary" /> Gemini 2.0 Flash
+                    <Sparkles className="w-3 h-3 text-primary" /> Groq
                   </span>
                 </div>
               </div>
