@@ -8,6 +8,7 @@ import NotFound from "@/pages/not-found";
 import Home from "@/pages/home";
 import Profile from "@/pages/profile";
 import Auth from "@/pages/auth";
+import AIPage from "@/pages/ai";
 import Layout from "@/components/layout";
 
 function Router() {
@@ -18,6 +19,12 @@ function Router() {
       <Route path="/">
         <Layout>
           <Home />
+        </Layout>
+      </Route>
+      
+      <Route path="/ai">
+        <Layout>
+          <AIPage />
         </Layout>
       </Route>
       

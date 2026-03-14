@@ -1,5 +1,5 @@
 import { Link, useLocation } from "wouter";
-import { Briefcase, Newspaper, UserCircle, LogOut, Code2, Menu, X } from "lucide-react";
+import { Briefcase, Newspaper, UserCircle, LogOut, Code2, Menu, X, Bot } from "lucide-react";
 import NewsWidget from "./news-widget";
 import Chatbot from "./chatbot";
 import { useState } from "react";
@@ -10,6 +10,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   const navItems = [
+    { icon: Bot, label: "AI Analyst", href: "/ai" },
     { icon: Newspaper, label: "Feed", href: "/" },
     { icon: Briefcase, label: "Jobs", href: "/?tab=jobs" },
     { icon: UserCircle, label: "Profile", href: "/profile" },
