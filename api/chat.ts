@@ -55,14 +55,15 @@ export default async function handler(req: any, res: any) {
     });
 
     const aiData = await groqResponse.json();
+    const answer = aiData.choices[0]?.message?.content || "No response from AI";
 
-    if (aiData.error) {
-      console.error("Groq API Error:", aiData.error);
-      return res.status(500).json({ error: aiData.error.message });
-    }
-
-    const answer = aiData.choices[0].message.content;
-    res.status(200).json({ answer });
+// 프론트엔드 코드마다 'answer', 'text', 'message' 중 무엇을 쓸지 다르기 때문에
+// 세 개를 다 보내주면 100% 해결됩니다.
+    res.status(200).json({ 
+    answer: answer, 
+    text: answer, 
+    message: answer 
+  });
 
   } catch (error: any) {
     console.error("System Error:", error.message);
