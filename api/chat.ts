@@ -56,9 +56,7 @@ export default async function handler(req: any, res: any) {
 
     const aiData = await groqResponse.json();
     const answer = aiData.choices[0]?.message?.content || "No response from AI";
-
-// 프론트엔드 코드마다 'answer', 'text', 'message' 중 무엇을 쓸지 다르기 때문에
-// 세 개를 다 보내주면 100% 해결됩니다.
+    
     res.status(200).json({ 
     answer: answer, 
     text: answer, 
