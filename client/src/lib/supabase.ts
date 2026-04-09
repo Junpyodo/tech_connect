@@ -1,11 +1,11 @@
 import { createClient } from '@supabase/supabase-js';
 
-// Vercel 환경변수에서 가져오기 (Vite 프로젝트라면 VITE_ 접두사가 필요할 수 있습니다)
-const supabaseUrl = import.meta.env.SUPABASE_URL || '';
-const supabaseAnonKey = import.meta.env.SUPABASE_API_KEY || '';
+const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || '';
+const supabaseAnonKey = import.meta.env.VITE_SUPABASE_API_KEY || '';
 
 if (!supabaseUrl || !supabaseAnonKey) {
-  console.warn("Supabase URL or Key is missing. Check your environment variables.");
+  console.warn("Supabase 환경 변수가 비어있습니다. Vercel 설정에서 VITE_ 접두사를 붙였는지 확인하세요!");
 }
 
-export const supabase = createClient(supabaseUrl, supabaseApiKey);
+// supabaseApiKey -> supabaseAnonKey로 수정
+export const supabase = createClient(supabaseUrl, supabaseAnonKey);
