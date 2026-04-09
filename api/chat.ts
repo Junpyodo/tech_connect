@@ -67,4 +67,18 @@ export default async function handler(req: any, res: any) {
     console.error("System Error:", error.message);
     res.status(500).json({ error: "Internal Server Error" });
   }
+  
+  #asdf
+  import { supabase } from '../lib/supabase';
+
+  const saveChat = async (question: string, answer: string) => {
+  const { data, error } = await supabase
+    .from('chat_history')
+    .insert([
+      { user_question: question, ai_response: answer }
+    ]);
+
+  if (error) console.error('저장 실패:', error);
+  else console.log('DB 저장 완료:', data);
+};
 }
